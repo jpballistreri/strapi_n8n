@@ -1,0 +1,99 @@
+version: "3"
+
+volumes:
+  db_storage:
+  n8n_db:
+
+services:
+  strapi:
+    build:
+      context: ./app
+    container_name: strapi_v4_app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${STRAPI_NODE_ENV}
+      DATABASE_CLIENT: ${STRAPI_DATABASE_CLIENT}
+      DATABASE_HOST: ${STRAPI_DATABASE_HOST}
+      DATABASE_PORT: ${STRAPI_DATABASE_PORT}
+      DATABASE_NAME: ${STRAPI_DATABASE_NAME}
+      DATABASE_USERNAME: ${STRAPI_DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${STRAPI_DATABASE_PASSWORD}
+    volumes:
+      - ./app:/srv/app
+    ports:
+      - 127.0.0.1:8000:1337
+    depends_on:
+      - strapi_db
+
+  strapi_db:
+    image: postgres:13
+    container_name: strapi_v4_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${STRAPI_DATABASE_NAME}
+      POSTGRES_USER: ${STRAPI_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${STRAPI_DATABASE_PASSWORD}
+    volumes:
+      - ./data:/var/lib/postgresql/data
+  
+  n8n_db:
+    image: postgres:11
+    container_name: n8n_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${N8N_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${N8N_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${N8N_POSTGRES_DB}
+      - POSTGRES_NON_ROOT_USER=${N8N_POSTGRES_NON_ROOT_USER}
+      - POSTGRES_NON_ROOT_PASSWORD=${N8N_POSTGRES_NON_ROOT_PASSWORD}
+    volumes:
+      - ./n8n_db:/var/lib/postgresql/data
+      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h localhost -U ${N8N_POSTGRES_USER} -d ${N8N_POSTGRES_DB}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n
+    restart: always
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=n8n_db
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${N8N_POSTGRES_DB}
+      - DB_POSTGRESDB_USER=${N8N_POSTGRES_NON_ROOT_USER}
+      - DB_POSTGRESDB_PASSWORD=${N8N_POSTGRES_NON_ROOT_PASSWORD}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER
+      - N8N_BASIC_AUTH_PASSWORD
+      - WEBHOOK_URL=http://localhost/
+      - WEBHOOK_TUNNEL_URL=http://localhost/
+    ports:
+      - 127.0.0.1:5678:5678
+    links:
+      - n8n_db
+    volumes:
+      - n8n_db:/home/node/
+    command: /bin/sh -c "n8n start --tunnel"
+    depends_on:
+      n8n_db:
+        condition: service_healthy
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    ports:
+      - "127.0.0.1:8080:80"
+
+networks:
+  default:
+    name: external-network
