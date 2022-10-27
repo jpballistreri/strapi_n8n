@@ -1,0 +1,99 @@
+{
+  "name": "Webhook-to-StrapiApi",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://strapi:1337/api/cars",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"data\":{\"model\":\"{{$json[\"model\"]}}\",\"description\":\"{{$json[\"description\"]}}\",\"price\":\"{{$json[\"price\"]}}\"}}",
+        "options": {}
+      },
+      "id": "983d1eab-f985-47b3-b69f-e17e809bc097",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1240,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "headerAuth",
+        "httpMethod": "POST",
+        "path": "01fe431e-bceb-47f6-abc0-08d9ab9c6df4",
+        "options": {}
+      },
+      "id": "ac231444-f722-403c-91c3-04117e43d330",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        440,
+        320
+      ],
+      "webhookId": "f400a46d-4ca8-4a1e-a098-dc0fa80a5f49",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "3",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cars = $input.all()[0].json.body\n\nreturn cars"
+      },
+      "id": "491cf3d6-8d53-4643-9517-8c848bdc687f",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        840,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": 2,
+  "meta": {
+    "instanceId": "1604e5ec158bb66674a460f7124ad7bd361057bb2af2eff0aaebbdfe1883636b"
+  },
+  "tags": []
+}
